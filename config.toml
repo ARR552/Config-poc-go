@@ -1,0 +1,11 @@
+Miss = 3
+POC_VARIABLE = "Hola"
+[Conf.Option]
+Number = 10
+[[Conf.Datas]]
+URL = "http://localhost:3000/api"
+Try = 2
+[Config]
+Op = "wee"
+Extr = "yes"
+POC_VARIABLE2 = "File"
