@@ -1,28 +1,58 @@
 package main
 
 import (
-	"io/ioutil"
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"os"
-	"github.com/imdario/mergo"
-	"github.com/caarlos0/env/v6"
+	"strconv"
+	configLibrary "github.com/hermeznetwork/go-hermez-config"
+
 )
 func main() {
-	Init()
-	fmt.Println("Default configuration: ",ConfigurationDef)
+	ConfigurationDef := `
+Miss = 30
+POC_VARIABLE = "Hola_default"
+[Conf.Option]
+Number = 101
+[[Conf.Datas]]
+URL = "default_url"
+Try = 50
+[Config]
+Op = "default"
+Extr = "yes_default"
+POC_VARIABLE2 = "File_default"
+`
 
 	// Set env variables. Done outside of the app
 	os.Setenv("POC_VARIABLE", "DEFAULT_VARIABLE")
 	os.Setenv("Option.Number", "5")
+	os.Setenv("Data.URL", "http://localhost:3000/api")
+	os.Setenv("Data.Try", "1000")
 
-	data, err := LoadConf("./config.toml")
+	path := "./config.toml"
+    
+	var cfg Configuration
+	err := configLibrary.LoadConfig(path, ConfigurationDef, &cfg)
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
+        //Handle error
+        fmt.Println(err)
+    }
+	var data Data
+	if os.Getenv("Data.URL") != "" {
+		data = Data {
+			URL: os.Getenv("Data.URL"),
+		}
+		if os.Getenv("Data.Try") != "" {
+			i, err := strconv.Atoi(os.Getenv("Data.Try"))
+			if err != nil {
+				fmt.Println(err)
+			}
+			data.Try = i
+		}
+		var datas []Data
+		datas = append(datas, data)
+		cfg.Conf.Datas = datas
 	}
-	fmt.Println("ConfigFile Configuration (ENV+TOML): ",data)
-	mergo.Merge(data, ConfigurationDef)
-	fmt.Println("Final Configuration (ENV+TOML+Defaul): ",data)
+    fmt.Println("Configuration: ", cfg)
 }
 type Data struct {
 	URL string `env:"Data.URL"`
@@ -43,54 +73,4 @@ type Configuration struct {
 	Config Config
 	Conf Conf
 	POC_VARIABLE string  `env:"POC_VARIABLE"`
-}
-// Load loads a generic config.
-func Load(path string, cfg interface{}) error {
-	bs, err := ioutil.ReadFile(path) //nolint:gosec
-	if err != nil {
-		return err
-	}
-	cfgToml := string(bs)
-	if _, err := toml.Decode(cfgToml, cfg); err != nil {
-		return err
-	}
-	return nil
-}
-// LoadConf loads the configuration from path.
-func LoadConf(path string) (*Configuration, error) {
-	var cfg Configuration
-	if err := Load(path, &cfg); err != nil {
-		return nil, fmt.Errorf("error loading configuration file: %w", err)
-	}
-
-	if err := env.Parse(&cfg); err != nil {
-		fmt.Printf("%+v\n", err)
-	}
-	return &cfg, nil
-}
-var ConfigurationDef Configuration
-func Init() {
-	data := Data {
-		Try: 1,
-		URL: "Default_url",
-	}
-	var datas []Data
-	datas = append(datas, data)
-	datas = append(datas, data)
-	option := Option {
-		Number: 1,
-	}
-	conf := Conf {
-		Datas: datas,
-		Option: option,
-	}
-	config := Config {
-		Op: "default_op",
-		Extr: "default_extr",
-	}
-	ConfigurationDef = Configuration {
-		Config: config,
-		Conf: conf,
-		POC_VARIABLE: "default_Poc_variable",
-	}
 }
